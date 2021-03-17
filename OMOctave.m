@@ -1,4 +1,4 @@
-% OpenModelica Octave Interface
+% PR-DC OpenModelica Octave Interface
 % Author: Milos Petrasinovic <mpetrasinovic@prdc.rs>
 % PR-DC, Republic of Serbia
 % info@pr-dc.com

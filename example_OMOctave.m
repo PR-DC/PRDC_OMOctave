@@ -1,4 +1,4 @@
-% OpenModelica Octave Interface test script
+% PR-DC OpenModelica Octave Interface test script
 % Author: Milos Petrasinovic <mpetrasinovic@prdc.rs>
 % PR-DC, Republic of Serbia
 % info@pr-dc.com
