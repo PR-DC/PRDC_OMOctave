@@ -59,7 +59,7 @@ LOG_SUCCESS       | info    | The simulation finished successfully.
     timeTotal = 9.0651016
 >> omc.close();
 ```
-To see the list of available OpenModelicaScripting API see    (https://www.openmodelica.org/doc/OpenModelicaUsersGuide/latest/scripting_api.html
+To see the list of available OpenModelicaScripting API see https://www.openmodelica.org/doc/OpenModelicaUsersGuide/latest/scripting_api.html
 
 ## License
 Copyright (C) 2021 PR-DC <info@pr-dc.com>
