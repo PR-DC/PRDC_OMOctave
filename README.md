@@ -1,4 +1,4 @@
-# OMOctave
+# PR-DC OMOctave
 GNU Octave scripting OpenModelica interface using ZEROMQ based on OMMatlab available at:<br>
 https://github.com/OpenModelica/OMMatlab/
 
