@@ -71,7 +71,7 @@
 % CONDITIONS OF OSMC-PL.
 
 classdef OMOctave < handle
-  properties (Access = private)
+  properties (Access = public)
     pid = 0
     active
     requester
@@ -92,7 +92,7 @@ classdef OMOctave < handle
     overridevariables = struct
     simoptoverride = struct
     inputflag = false
-    linearOptions = struct('startTime', '0.0', 'stopTime', '1.0',...
+    linearOptions = struct('startTime', '0.0', 'stopTime', '1.0', ...
       'numberOfIntervals', '500', 'stepSize', '0.002', 'tolerance', '1e-6')
     linearfile
     linearFlag = false
@@ -109,7 +109,7 @@ classdef OMOctave < handle
       % Prevent buffer output
       more off
       
-      [~,randomstring] = fileparts(tempname);
+      [~, randomstring] = fileparts(tempname);
       if(ispc)
         if nargin ~= 1
           omhome = getenv('OPENMODELICAHOME');
@@ -185,7 +185,7 @@ classdef OMOctave < handle
     function reply = sendExpression(obj, expr, len)
       if(obj.active)
         if(nargin == 2)
-          len = 1024;
+          len = 2^32;
         end
         zmq_send(obj.requester, expr, 0);
         data = char(zmq_recv(obj.requester, len, 0));
@@ -200,8 +200,8 @@ classdef OMOctave < handle
       end
     end
     
-    function ModelicaSystem(obj, filename, modelname, ...
-        libraries, commandLineOptions)
+    function ModelicaSystem(obj, filename, modelname, libraries, ...
+        commandLineOptions)
       if(nargin < 2)
         error('Not enough arguments, filename and classname is required');
       end
@@ -214,7 +214,7 @@ classdef OMOctave < handle
       if(nargin == 5)
         exp = ["setCommandLineOptions(""" commandLineOptions """)"];
         cmdExp = obj.sendExpression(exp);
-        if(cmdExp == "false")
+        if(iscell(cmdExp) && strcmp(cmdExp{1}, "false"))
           disp(obj.sendExpression("getErrorString()"));
           return;
         end
@@ -231,12 +231,11 @@ classdef OMOctave < handle
       if(nargin > 3)
         for n = 1:length(libraries)
           if(isfile(libraries{n}))
-            libmsg = obj.sendExpression(["loadFile( """ ...
-              libraries{n} """)"]);
+            libmsg = obj.sendExpression(["loadFile( """ libraries{n} """)"]);
           else
             libmsg = obj.sendExpression(["[loadModel(" libraries{n} ")"]);
           end
-          if(libmsg == "false")
+          if(iscell(libmsg) && strcmp(libmsg{1}, "false"))
             disp(obj.sendExpression("getErrorString()"));
             return;
           end
@@ -252,10 +251,9 @@ classdef OMOctave < handle
     end
     
     function BuildModelicaModel(obj)
-      buildModelResult = obj.sendExpression(["buildModel(" ...
-        obj.modelname ")"]);
+      buildModelResult = obj.sendExpression(["buildModel(" obj.modelname ")"]);
       
-      if(isempty(buildModelResult(1)))
+      if(isempty(buildModelResult{1}))
         disp(obj.sendExpression("getErrorString()"));
         return;
       end
@@ -293,14 +291,14 @@ classdef OMOctave < handle
         allvaritem = xDoc.getElementsByTagName('ScalarVariable');
         N = allvaritem.getLength;
         t = tic;
-        fields = {'name', 'isValueChangeable', 'description', ...
+        fields = {'name', 'isValueChangeable', 'description',...
             'variability', 'causality', 'alias', 'aliasVariable'};
         for k = 1:N
           if(k ==1 || ~mod(k, round(N/100))) 
             frac = k/N;
             waitbar(frac, h, ['Reading ScalarVariables ' ...
               num2str(frac*100, '%.0f') '% [' num2str(k) '/' ...
-              num2str(N) '] dt = ' num2str(toc(t), '%.1f') 's...']);
+              num2str(N) '] dt = ' num2str(toc(t), '%.1f') ' s...']);
             t = tic;
           end
           
@@ -427,9 +425,13 @@ classdef OMOctave < handle
     
     function result = getParameters(obj, args)
       if(nargin > 1)
-        param = blanks(length(args));
-        for n = 1:length(args)
-          param(n) = obj.parameterlist.(args(n));
+        if(iscell(args))
+          param = {};
+          for n = 1:length(args)
+            param{n} = obj.parameterlist.(args{n});
+          end
+        else
+          param = obj.parameterlist.(args);
         end
         result = param;
       else
@@ -439,9 +441,13 @@ classdef OMOctave < handle
     
     function result = getInputs(obj, args)
       if(nargin > 1)
-        inputs = blanks(length(args));
-        for n = 1:length(args)
-          inputs(n) = obj.inputlist.(args(n));
+        if(iscell(args))
+          inputs = {};
+          for n = 1:length(args)
+            inputs{n} = obj.inputlist.(args{n});
+          end
+        else
+          inputs = obj.inputlist.(args);
         end
         result = inputs;
       else
@@ -451,9 +457,13 @@ classdef OMOctave < handle
     
     function result = getOutputs(obj, args)
       if(nargin > 1)
-        outputs = blanks(length(args));
-        for n = 1:length(args)
-          outputs(n) = obj.outputlist.(args(n));
+        if(iscell(args))
+          outputs = {};
+          for n = 1:length(args)
+            outputs{n} = obj.outputlist.(args{n});
+          end
+        else
+          outputs = obj.outputlist.(args);
         end
         result = outputs;
       else
@@ -463,9 +473,13 @@ classdef OMOctave < handle
     
     function result = getContinuous(obj, args)
       if(nargin > 1)
-        continuous = blanks(length(args));
-        for n = 1:length(args)
-          continuous(n) = obj.continuouslist.(args(n));
+        if(iscell(args))
+          continuous = {};
+          for n = 1:length(args)
+            continuous{n} = obj.continuouslist.(args{n});
+          end
+        else
+          continuous = obj.continuouslist.(args);
         end
         result = continuous;
       else
@@ -475,9 +489,13 @@ classdef OMOctave < handle
     
     function result = getSimulationOptions(obj, args)
       if(nargin > 1)
-        simoptions = blanks(length(args));
-        for n = 1:length(args)
-          simoptions(n) = obj.simulationoptions.(args(n));
+        if(iscell(args))
+          simoptions = {};
+          for n = 1:length(args)
+            simoptions{n} = obj.simulationoptions.(args{n});
+          end
+        else
+          simoptions = obj.simulationoptions.(args);
         end
         result = simoptions;
       else
@@ -487,9 +505,13 @@ classdef OMOctave < handle
     
     function result = getLinearizationOptions(obj, args)
       if(nargin > 1)
-        linoptions = blanks(length(args));
-        for n = 1:length(args)
-          linoptions(n) = obj.linearOptions.(args(n));
+        if(iscell(args))
+          linoptions = {};
+          for n = 1:length(args)
+            linoptions{n} = obj.linearOptions.(args{n});
+          end
+        else
+          linoptions = obj.linearOptions.(args);
         end
         result = linoptions;
       else
@@ -500,14 +522,17 @@ classdef OMOctave < handle
     % Set Methods
     function setParameters(obj, args)
       if(nargin > 1)
+        if(~iscell(args))
+          args = {args};
+        end
         for n = 1:length(args)
-          val = strrep(args(n), " ", "");
-          value = split(val, "=");
-          if(isfield(obj.parameterlist, char(value(1))))
-            obj.parameterlist.(value(1)) = value(2);
-            obj.overridevariables.(value(1)) = value(2);
+          val = strrep(args{n}, " ", "");
+          value = strsplit(val, "=");
+          if(isfield(obj.parameterlist, char(value{1})))
+            obj.parameterlist.(value{1}) = value{2};
+            obj.overridevariables.(value{1}) = value{2};
           else
-             disp([value(1) " is not a parameter"]);
+             disp([value{1} " is not a parameter"]);
           end
         end
       end
@@ -515,14 +540,17 @@ classdef OMOctave < handle
     
     function setSimulationOptions(obj, args)
       if(nargin > 1)
+        if(~iscell(args))
+          args = {args};
+        end
         for n = 1:length(args)
-          val = strrep(args(n), " ", "");
-          value = split(val, "=");
-          if(isfield(obj.simulationoptions, char(value(1))))
-            obj.simulationoptions.(value(1)) = value(2);
-            obj.simoptoverride.(value(1)) = value(2);
+          val = strrep(args{n}, " ", "");
+          value = strsplit(val, "=");
+          if(isfield(obj.simulationoptions, char(value{1})))
+            obj.simulationoptions.(value{1}) = value{2};
+            obj.simoptoverride.(value{1}) = value{2};
           else
-            disp([value(1) " is not a Simulation Option"]);
+            disp([value{1} " is not a Simulation Option"]);
           end
         end
       end
@@ -530,14 +558,17 @@ classdef OMOctave < handle
     
     function setLinearizationOptions(obj, args)
       if(nargin > 1)
+        if(~iscell(args))
+          args = {args};
+        end
         for n = 1:length(args)
-          val = strrep(args(n), " ", "");
-          value = split(val, "=");
-          if(isfield(obj.linearOptions, char(value(1))))
-            obj.linearOptions.(value(1)) = value(2);
-            obj.linearOptions.(value(1)) = value(2);
+          val = strrep(args{n}, " ", "");
+          value = strsplit(val, "=");
+          if(isfield(obj.linearOptions, char(value{1})))
+            obj.linearOptions.(value{1}) = value{2};
+            obj.linearOptions.(value{1}) = value{2};
           else
-            disp([value(1) " is not a Linearization Option"]);
+            disp([value{1} " is not a Linearization Option"]);
           end
         end
       end
@@ -545,14 +576,17 @@ classdef OMOctave < handle
     
     function setInputs(obj, args)
       if(nargin > 1)
+        if(~iscell(args))
+          args = {args};
+        end
         for n = 1:length(args)
-          val = strrep(args(n), " ", "");
-          value = split(val, "=");
-          if(isfield(obj.inputlist, char(value(1))))
-            obj.inputlist.(value(1)) = value(2);
+          val = strrep(args{n}, " ", "");
+          value = strsplit(val, "=");
+          if(isfield(obj.inputlist, char(value{1})))
+            obj.inputlist.(value{1}) = value{2};
             obj.inputflag = true;
           else
-            disp([value(1) " is not a Input"]);
+            disp([value{1} " is not a Input"]);
           end
         end
       end
@@ -562,8 +596,8 @@ classdef OMOctave < handle
       obj.csvfile = strrep(fullfile(obj.mattempdir, ...
         [char(obj.modelname) '.csv']), '\', '/');
       fileID = fopen(obj.csvfile, "w");
-      fprintf(fileID, ['time,' strjoin(fieldnames(obj.inputlist), ...
-        ",") ',end\n']);
+      fprintf(fileID,['time,' strjoin(fieldnames(obj.inputlist), ",") ...
+        ',end\n']);
       fields = fieldnames(obj.inputlist);
       time = [];
       count = 1;
@@ -574,8 +608,8 @@ classdef OMOctave < handle
         if(isempty(var))
           var = "0";
         end
-        s1 = eval(strrep(strrep(strrep(strrep(var, "[", "{"), "]", ...
-          "}"), "(", "{"), ")", "}"));
+        s1 = eval(strrep(strrep(strrep(strrep(var, "[", "{"), ...
+          "]", "}"), "(", "{"), ")", "}"));
         tmpcsvdata.(char(fields(i))) = s1;
         if(length(s1) > 1)
           for j = 1:length(s1)
@@ -633,7 +667,7 @@ classdef OMOctave < handle
       if(nargin > 1)
         if(~isempty(resultfile))
           r = [' -r=' char(resultfile)];
-          obj.resultfile = strrep(fullfile(obj.mattempdir, ...
+          obj.resultfile=strrep(fullfile(obj.mattempdir, ...
             char(resultfile)), '\', '/');
         else
           r = '';
@@ -653,7 +687,7 @@ classdef OMOctave < handle
       if(isfile(obj.xmlfile))
         if(ispc)
           getexefile = strrep(fullfile(obj.mattempdir, ...
-            [char(obj.modelname), '.exe']), '\', '/');
+            [char(obj.modelname) '.exe']),'\','/');
         else
           getexefile = strrep(fullfile(obj.mattempdir, ...
             char(obj.modelname)), '\', '/');
@@ -664,20 +698,20 @@ classdef OMOctave < handle
           cd(obj.mattempdir);
           if(~isempty(fieldnames(obj.overridevariables)) || ...
            ~isempty(fieldnames(obj.simoptoverride)))
-            names = [fieldnames(obj.overridevariables); ...
+            names = [fieldnames(obj.overridevariables);...
               fieldnames(obj.simoptoverride)];
-            tmpstruct = cell2struct([ ...
-              struct2cell(obj.overridevariables); ...
+            tmpstruct = cell2struct([struct2cell( ...
+              obj.overridevariables); ...
               struct2cell(obj.simoptoverride)], names, 1);
             fields = fieldnames(tmpstruct);
-            tmpoverride1 = blanks(length(fields));
+            tmpoverride1 = {};
             for i = 1:length(fields)
-              if(isfield(obj.mappednames,fields(i)))
+              if(isfield(obj.mappednames, fields{i}))
                 name = obj.mappednames.(fields{i});
               else
-                name = fields(i);
+                name = fields{i};
               end
-              tmpoverride1(i) = [name "=" tmpstruct.(fields{i})];
+              tmpoverride1{i} = [name "=" tmpstruct.(fields{i})];
             end
             overridevar = [' -override=' char(strjoin(tmpoverride1, ','))];
           else
@@ -706,17 +740,17 @@ classdef OMOctave < handle
     function result = linearize(obj)
       linres = obj.sendExpression(...
         "setCommandLineOptions(""+generateSymbolicLinearization"")");
-      if(linres == "false")
+      if(iscell(linres) && strcmp(linres{1}, "false"))
         disp(["Linearization cannot be performed"...
           obj.sendExpression("getErrorString()")]);
         return;
       end
 
       fields = fieldnames(obj.overridevariables);
-      tmpoverride1 = blanks(length(fields));
+      tmpoverride1 = {};
       
       for i = 1:length(fields)
-        tmpoverride1(i) = [fields(i) "=" ...
+        tmpoverride1{i} = [fields{i} "=" ...
           obj.overridevariables.(fields{i})];
       end
       
@@ -727,9 +761,9 @@ classdef OMOctave < handle
       end
       
       linfields = fieldnames(obj.linearOptions);
-      tmpoverride1lin = blanks(length(linfields));
+      tmpoverride1lin = {};
       for i = 1:length(linfields)
-        tmpoverride1lin(i) = [linfields(i) "="...
+        tmpoverride1lin{i} = [linfields{i} "="...
           obj.linearOptions.(linfields{i})];
       end
       overridelinear = char(strjoin(tmpoverride1lin, ','));
@@ -742,23 +776,23 @@ classdef OMOctave < handle
       end
       
       linexpr = strcat('linearize(', obj.modelname, ',', ...
-        overridelinear, ',', 'simflags=', '"', csvinput, '  ', ...
-        tmpoverride2, '")');
+        overridelinear, ',', 'simflags=', '"', ...
+        csvinput, '  ', tmpoverride2, '")');
       res = obj.sendExpression(linexpr);
       obj.resultfile = res.("resultFile");
       obj.linearmodelname = strcat('linear_', obj.modelname);
       obj.linearfile = strrep(fullfile(obj.mattempdir, ...
-        [char(obj.linearmodelname), '.mo']), '\', '/');
+        [char(obj.linearmodelname) '.mo']), '\', '/');
       if(isfile(obj.linearfile))
         loadmsg = obj.sendExpression(["loadFile(""" obj.linearfile """)"]);
-        if(loadmsg == "false")
+        if(iscell(loadmsg) && strcmp(loadmsg{1}, "false"))
           disp(obj.sendExpression("getErrorString()"));
           return;
         end
         cNames = obj.sendExpression("getClassNames()");
-        buildmodelexpr = ["buildModel(" cNames(1) ")"];
+        buildmodelexpr = ["buildModel(" cNames{1} ")"];
         buildModelmsg = obj.sendExpression(buildmodelexpr);
-        if(~isempty(buildModelmsg(1)))
+        if(~isempty(buildModelmsg{1}))
           obj.linearFlag = true;
           obj.xmlfile = strrep(...
             fullfile(obj.mattempdir, char(buildModelmsg(2))), '\', '/');
@@ -873,16 +907,16 @@ classdef OMOctave < handle
       if(isfile(resfile))
         if(nargin > 1 && ~isempty(args))
           tmp1 = strjoin(cellstr(args), ',');
-          tmp2 = ['{' tmp1 '}'];
-          simresult = obj.sendExpression(["readSimulationResult(""" ...
-            resfile """," tmp2 ")"]);
+          tmp2 = ['{',tmp1,'}'];
+          simresult = obj.sendExpression([ ...
+            "readSimulationResult(""" resfile """," tmp2 ")"]);
           obj.sendExpression("closeSimulationResultFile()");
           result = simresult;
         else
-          tmp1 = obj.sendExpression(["readSimulationResultVars(""" ...
+          tmp = obj.sendExpression(["readSimulationResultVars(""" ...
             resfile """)"]);
           obj.sendExpression("closeSimulationResultFile()");
-          result = tmp1;
+          result = tmp;
         end
       else
         result = ["Result File does not exist! " char(resfile)];
@@ -916,45 +950,43 @@ classdef OMOctave < handle
     function result = parseExpression(obj, args)
       final = regexp(args, '"(.*?)"|[{}()=]|[a-zA-Z0-9_.]+', 'match');
       if(length(final) > 1)
-        if(char(final(1)) == "{" && char(final(2)) ~= "{")
-          tmp3 = {};
+        if(strcmp(char(final{1}), "{") && ~strcmp(char(final{2}), "{"))
+          buff = {};
           count = 1;
           for i = 1:length(final)
-            if(char(final(i)) ~= "{" && char(final(i)) ~= "}" && ...
-             char(final(i)) ~= "(" && char(final(i)) ~= ")" && ...
-             char(final(i)) ~= ",")
-              value = strrep(final(i), """", "");
-              tmp3(count) = value;
+            if(~any(ismember(char(final{i}), {"{", "}", ")", "(", ","})))
+              value = strrep(final{i}, """", "");
+              buff{count} = value;
               count = count+1;
             end
           end
-          result = tmp3;
-        elseif(char(final(1)) == "{" && char(final(2)) == "{")
-          tmpresults = {1};
+          result = buff;
+        elseif(strcmp(char(final{1}), "{") && strcmp(char(final{2}), "{"))
+          buff = {};
           tmpcount = 1;
           count = 1;
           for i = 2:length(final)-1
-            if(char(final(i)) == "{")
-              if(isnan(str2double(final(i+1))))
-                tmp = blanks(1);
+            if(strcmp(char(final{i}), "{"))
+              if(isnan(str2double(final{i+1})))
+                tmp = "";
               else
                 tmp = [];
               end
-            elseif(char(final(i)) == "}")
-              tmpresults{tmpcount} = tmp;
-              tmp = [];
+            elseif(strcmp(char(final{i}), "}"))
+              buff{tmpcount} = tmp;
+              tmp = {};
               count = 1;
               tmpcount = tmpcount+1;
             else
-              tmp(count) = char(final(i));
+              tmp{count} = char(final{i});
               count = count+1;
             end
           end
-          result = tmpresults;
+          result = buff;
         elseif(strcmp(final{1}, "record"))
           result = struct;
           for i = 3:length(final)-2
-            if(char(final(i)) == "=")
+            if(strcmp(char(final{i}), "="))
               value = strrep(final{i+1}, """", "");
               result.(final{i-1}) = value;
             end
@@ -983,8 +1015,7 @@ classdef OMOctave < handle
       delete(obj);
     end
   end
-
-
+  
   methods (Access = private)
     function pkgForgeCheck(obj, pkgFname, min_version)
       % GNU Octave forge package check
@@ -1027,3 +1058,4 @@ classdef OMOctave < handle
     end
   end
 end
+
