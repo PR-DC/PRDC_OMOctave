@@ -1,0 +1,14 @@
+--------------------
+PRDC_OMOctave
+GNU Octave scripting OpenModelica interface
+--------------------
+
+Release 1.0.1, 26.03.2021.
+
+- Bugfixes
+
+Release 1.0.0, 17.03.2021.
+
+- Initial release
+
+--------------------
